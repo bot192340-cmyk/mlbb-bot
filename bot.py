@@ -1,84 +1,58 @@
 import os
-import re
-import logging
 import asyncio
-import aiohttp
+import logging
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from threading import Thread
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes, MessageHandler, filters
+from telegram.ext import ApplicationBuilder, ContextTypes
+import aiohttp
 
-# إعداد السجلات لمتابعة السرعة والأخطاء
+# إعداد السجلات لمتابعة حالة البوت
 logging.basicConfig(
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
-TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp33BhjtFxxAutnF90"
+# بيانات الحساب المستهدف لشحن الأكواد
+PLAYER_ID = "862212912"
+ZONE_ID = "6412"
+BOT_TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp33BhjtFxxAutnF90"
+CHANNEL_USERNAME = "mobilelegendsar1"
 
-# قائمة القنوات والمصادر التي تريد مراقبتها (أضف ما شئت هنا)
-SOURCE_CHANNELS = ["mobilelegendsar1", "OtherCodeChannel2"]
+# --- سيرفر ويب وهمي لرضا منصة Render وتجنب خطأ Timed Out ---
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running and active!")
 
-# بيانات اللعبة الخاصة بك ولأصدقائك (Game ID و Zone ID)
-# يمكنك إضافة عدة حسابات هنا ليقوم البوت بشحنها للجميع فوراً
-ACCOUNTS = [
-    {"game_id": "862212912", "zone_id": "6412"},  # حسابك
-    # {"game_id": "87654321", "zone_id": "5678"}, # حساب صديقك (أزل الرمز # إذا أردت تفعيله)
-]
+def run_web_server():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
+    server.serve_forever()
 
-async def redeem_code_on_site(code: str, game_id: str, zone_id: str):
-    """دالة إرسال الكود وإدخاله في موقع اللعبة بأقصى سرعة"""
-    url = "https://m.mobilelegends.com/en/codex" # رابط موقع الاستبدال الرسمي أو API الموقع
-    payload = {
-        "game_id": game_id,
-        "zone_id": zone_id,
-        "code": code,
-        # ملاحظة: بعض المواقع تتطلب بيانات تحقق إضافية مثل Verification Code يتم جلبها برمجياً
-    }
-    
-    try:
-        async with aiohttp.ClientSession() as session:
-            # إرسال طلب سريع للموقع لتفعيل الكود
-            async with session.post(url, json=payload, timeout=5) as response:
-                result = await response.text()
-                logging.info(f"Redeem attempt for Code {code} on ID {game_id}: Success")
-                return True
-    except Exception as e:
-        logging.error(f"Failed to redeem code {code} for ID {game_id}: {e}")
-        return False
+# تشغيل السيرفر الوهمي في خلفية النظام
+Thread(target=run_web_server, daemon=True).start()
+# -------------------------------------------------------------
 
-async def monitor_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = update.channel_post
-    if message and message.chat.username in SOURCE_CHANNELS:
-        text = message.text or message.caption
-        if text:
-            # البحث عن الكود داخل النص (عادة يكون مكون من أحرف وأرقام إنجليزية كبيرة وبطول معين)
-            # مثال: استخراج الأكواد التي تبدو ككود شحن
-            found_codes = re.findall(r'\b[A-Z0-9]{10,16}\b', text)
-            
-            if found_codes:
-                for code in found_codes:
-                    logging.info(f"⚡ Fastest code detected: {code}")
-                    
-                    # الدوران على الحسابات المسجلة وإرسال الكود لها فوراً وبسرعة
-                    for acc in ACCOUNTS:
-                        asyncio.create_task(
-                            redeem_code_on_site(code, acc["game_id"], acc["zone_id"])
-                        )
-                    
-                    # إرسال تنبيه لقناتك الخاصة أو حسابك بأن البوت حاول شحن الكود
-                    await context.bot.send_message(
-                        chat_id="@YourChannelUsername", # استبدل بمعرف قناتك لتستلم التنبيهات
-                        text=f"🔥 تم رصد كود وإرساله للموقع فوراً:\n`{code}`"
-                    )
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("أهلاً بك! بوت شحن أكواد موبايل ليجند يعمل الآن ومستعد لمراقبة القناة.")
 
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
-    
-    # ربط البوت بمراقبة عدة قنوات في نفس الوقت
-    for channel in SOURCE_CHANNELS:
-        app.add_handler(MessageHandler(filters.Chat(username=channel), monitor_channels))
-    
-    logging.info("🚀 Bot is running and monitoring all sources for instant redemption...")
-    app.run_polling()
+async def main():
+    # بناء تطبيق البوت
+    application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-if __name__ == "__main__":
-    main()
+    application.add_handler(telegram.ext.CommandHandler("start", start))
+
+    # تشغيل البوت
+    print("Application started")
+    await application.initialize()
+    await application.start()
+    await application.updater.start_polling()
+
+    # إبقاء البوت يعمل باستمرار
+    stop_event = asyncio.Event()
+    await stop_event.wait()
+
+if __name__ == '__main__':
+    asyncio.run(main())
