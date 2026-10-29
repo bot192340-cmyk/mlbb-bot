@@ -4,8 +4,7 @@ import logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from threading import Thread
 from telegram import Update
-from telegram.ext import ApplicationBuilder, ContextTypes
-import aiohttp
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # إعداد السجلات لمتابعة حالة البوت
 logging.basicConfig(
@@ -19,7 +18,7 @@ ZONE_ID = "6412"
 BOT_TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp33BhjtFxxAutnF90"
 CHANNEL_USERNAME = "mobilelegendsar1"
 
-# --- سيرفر ويب وهمي لرضا منصة Render وتجنب خطأ Timed Out ---
+# --- سيرفر ويب وهمي لرضا منصة Render وتجنب أخطاء المهلة ---
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -42,7 +41,7 @@ async def main():
     # بناء تطبيق البوت
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    application.add_handler(telegram.ext.CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start))
 
     # تشغيل البوت
     print("Application started")
