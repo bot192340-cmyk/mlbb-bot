@@ -13,12 +13,15 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-# بيانات الحساب المستهدف لشحن الأكواد
-PLAYER_ID = "862212912"
-ZONE_ID = "6412"
+# بيانات الحسابات المستهدفة لشحن الأكواد (حسابك + حساب صديقك)
+ACCOUNTS = [
+    {"name": "حسابك", "player_id": "862212912", "zone_id": "6412"},
+    {"name": "حساب صديقك", "player_id": "2017800676", "zone_id": "6109"}
+]
+
 BOT_TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp33BhjtFxxAutnF90"
 
-# قائمة أفضل وأسرع القنوات لمراقبتها في نفس الوقت
+# قائمة أفضل وأسرع قنوات موبايل ليجند لمراقبتها في نفس الوقت
 TARGET_CHANNELS = [
     "mobilelegendsar1",
     "mobileleg",
@@ -43,7 +46,7 @@ Thread(target=run_web_server, daemon=True).start()
 # -------------------------------------------------------------
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("أهلاً بك! بوت مراقبة أسرع قنوات موبايل ليجند يعمل الآن وجاهز للسهر طوال الليل.")
+    await update.message.reply_text("أهلاً بك! بوت مراقبة أكواد موبايل ليجند لحساباتكم يعمل الآن وجاهز طوال الليل.")
 
 # دالة لمراقبة الرسائل القادمة من جميع القنوات المحددة
 async def watch_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,10 +57,22 @@ async def watch_channels(update: Update, context: ContextTypes.DEFAULT_TYPE):
             code_text = message.text
             logging.info(f"تم التقاط كود من القناة @{message.chat.username}: {code_text}")
             
-            # إرسال تنبيه فوري لك في المحادثة الخاصة بالبوت
+            # تجهيز رسالة لكل الحسابات المسجلة
+            accounts_info = ""
+            for acc in ACCOUNTS:
+                accounts_info += f"👤 {acc['name']}:\n🆔 ID: `{acc['player_id']}`\n🌍 Zone: `{acc['zone_id']}`\n\n"
+
+            # إرسال تنبيه فوري يوضح الأكواد ومعلومات الحسابين
+            alert_msg = (
+                f"🚨 **تم رصد كود جديد في @{message.chat.username}**!\n\n"
+                f"🎁 **الكود:**\n`{code_text}`\n\n"
+                f"📋 **بيانات الحسابات للشحن:**\n{accounts_info}"
+            )
+            
             await context.bot.send_message(
                 chat_id=update.effective_chat.id, 
-                text=f"🚨 **كود جديد تم رصده في @{message.chat.username}**:\n\n{code_text}"
+                text=alert_msg,
+                parse_mode="Markdown"
             )
 
 async def main():
