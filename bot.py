@@ -12,7 +12,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
-TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp3BhjtFxxAutnF90"
+TOKEN = "9238839324:AAHQqj0ZUtQBtbNUgkp33BhjtFxxAutnF90"
 
 # قائمة القنوات والمصادر التي تريد مراقبتها (أضف ما شئت هنا)
 SOURCE_CHANNELS = ["mobilelegendsar1", "OtherCodeChannel2"]
